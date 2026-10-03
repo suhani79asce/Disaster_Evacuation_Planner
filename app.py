@@ -386,9 +386,14 @@ def static_files(path):
     return send_from_directory(".", path)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
+    port = int(os.environ.get("PORT", 5000))
     print(f"\n=======================================================")
     print(f"  Disaster Evacuation Planner - Flask + Python Server")
     print(f"  Running on: http://127.0.0.1:{port}/")
     print(f"=======================================================\n")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    try:
+        app.run(host="0.0.0.0", port=port, debug=False)
+    except OSError:
+        port = 8000
+        print(f"Port busy, falling back to: http://127.0.0.1:{port}/")
+        app.run(host="0.0.0.0", port=port, debug=False)

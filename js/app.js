@@ -739,5 +739,7 @@ class DisasterEvacuationApp {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  window.evacApp = new DisasterEvacuationApp();
+  if (typeof React === 'undefined' || !document.getElementById("root")) {
+    window.evacApp = new DisasterEvacuationApp();
+  }
 });

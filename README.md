@@ -188,18 +188,51 @@ The Node.js server (`server.js`) exposes genuine REST endpoints for all algorith
 
 ---
 
-## 🚀 6. How to Run Locally
+## 🛠 6. Technology Stack Architecture
 
-### Running the Server
+This project is built using:
+1. **Python**: Pure Python implementation of DAA algorithms (`PriorityQueue` with `heapq`, `BFS` with `collections.deque`, `Dijkstra` with `heapq`, capacity validation, deterministic tie-breaking).
+2. **Flask**: REST API server (`backend/app.py`) providing `/calculate-priority`, `/priority-queue`, `/bfs`, `/dijkstra`, `/evacuation-plan`, and static web serving.
+3. **React**: Reactive component architecture (`js/react-app.js`) with React 18 hooks (`useState`, `useEffect`, `useCallback`, `useRef`).
+4. **Leaflet**: Real-time CartoDB Positron interactive map with custom pins, road polylines, blocked road toggles, glowing routes, and BFS halos.
+
+---
+
+## 🚀 7. How to Run Locally
+
+### Option A: Python + Flask Server (Recommended)
+1. Install dependencies (if using external Python):
+   ```bash
+   pip install -r backend/requirements.txt
+   ```
+2. Start the Flask application:
+   ```bash
+   python run_backend.py
+   ```
+   *(Or double-click `run_backend.bat` on Windows)*
+3. Open your browser at:
+   ```
+   http://127.0.0.1:5000/
+   ```
+
+### Option B: Node.js Server
 ```bash
 node server.js
 ```
-The application will be live at:
+Open your browser at:
 ```
 http://localhost:8080/
 ```
 
-### Running the Automated Test Suite
+### Running Automated Algorithmic Test Suites
+
+#### 1. Python Unit Test Suite:
+```bash
+python backend/test_algorithms.py
+```
+*(Runs 20 automated tests validating Priority Queue, BFS, Dijkstra, and Capacity Validation)*
+
+#### 2. JavaScript / Node.js Test Suite:
 ```bash
 node test_algorithms.js
 node test_full_simulation.js

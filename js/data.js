@@ -148,23 +148,26 @@ const PRESETS = {
   }
 };
 
-// Map layout coordinates matching the Hyderabad visual reference map (viewBox 0 0 900 540)
+// Map layout coordinates - Well-spaced, non-overlapping (viewBox 0 0 940 520)
 const NODE_POSITIONS = {
-  A: { x: 370, y: 130, label: "Zone A", type: "danger", name: "Zone A (Fire)" },
-  C: { x: 300, y: 240, label: "Zone C", type: "danger", name: "Zone C (Flood)" },
-  D: { x: 260, y: 150, label: "Zone D", type: "danger", name: "Zone D (Accident)" },
-  B: { x: 320, y: 440, label: "Zone B", type: "danger", name: "Zone B (Fire)" },
-  E: { x: 490, y: 460, label: "Zone E", type: "danger", name: "Zone E (Landslide)" },
+  // Danger Zones (Outward perimeter)
+  A: { x: 320, y: 70, label: "Zone A", type: "danger", name: "Zone A (Fire)" },
+  D: { x: 140, y: 120, label: "Zone D", type: "danger", name: "Zone D (Accident)" },
+  C: { x: 120, y: 260, label: "Zone C", type: "danger", name: "Zone C (Flood)" },
+  B: { x: 250, y: 440, label: "Zone B", type: "danger", name: "Zone B (Fire)" },
+  E: { x: 370, y: 475, label: "Zone E", type: "danger", name: "Zone E (Landslide)" },
 
-  J_Banjara: { x: 375, y: 200, label: "Banjara Hills", type: "transit" },
-  J_Central: { x: 450, y: 260, label: "Hyderabad", type: "transit" },
-  J_Charminar: { x: 430, y: 380, label: "Charminar", type: "transit" },
-  J_Secunderabad: { x: 530, y: 190, label: "Secunderabad Junction", type: "transit" },
+  // Transit Hubs (Central corridor)
+  J_Banjara: { x: 320, y: 220, label: "Banjara Hills", type: "transit" },
+  J_Central: { x: 490, y: 270, label: "Hyderabad", type: "transit" },
+  J_Secunderabad: { x: 650, y: 150, label: "Secunderabad", type: "transit" },
+  J_Charminar: { x: 490, y: 420, label: "Charminar", type: "transit" },
 
-  S01: { x: 320, y: 340, label: "S01", type: "shelter", name: "Shelter S01" },
-  S02: { x: 590, y: 170, label: "S02", type: "shelter", name: "Shelter S02" },
-  S03: { x: 600, y: 360, label: "S03", type: "shelter", name: "Shelter S03" },
-  S04: { x: 500, y: 410, label: "S04", type: "shelter", name: "Shelter S04" }
+  // Safe Shelters (Outer safe zones)
+  S01: { x: 180, y: 380, label: "S01", type: "shelter", name: "Shelter S01" },
+  S02: { x: 820, y: 120, label: "S02", type: "shelter", name: "Shelter S02" },
+  S03: { x: 800, y: 330, label: "S03", type: "shelter", name: "Shelter S03" },
+  S04: { x: 680, y: 440, label: "S04", type: "shelter", name: "Shelter S04" }
 };
 
 const DEFAULT_SCENARIO = {

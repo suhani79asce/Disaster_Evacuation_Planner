@@ -148,26 +148,26 @@ const PRESETS = {
   }
 };
 
-// Map layout coordinates - Well-spaced, non-overlapping (viewBox 0 0 940 520)
+// Real-world Hyderabad GPS coordinates for Leaflet Map
 const NODE_POSITIONS = {
-  // Danger Zones (Outward perimeter)
-  A: { x: 320, y: 70, label: "Zone A", type: "danger", name: "Zone A (Fire)" },
-  D: { x: 140, y: 120, label: "Zone D", type: "danger", name: "Zone D (Accident)" },
-  C: { x: 120, y: 260, label: "Zone C", type: "danger", name: "Zone C (Flood)" },
-  B: { x: 250, y: 440, label: "Zone B", type: "danger", name: "Zone B (Fire)" },
-  E: { x: 370, y: 475, label: "Zone E", type: "danger", name: "Zone E (Landslide)" },
+  // Danger Zones
+  A: { lat: 17.4550, lng: 78.4420, x: 320, y: 70, label: "Zone A", type: "danger", name: "Zone A (Fire)" },
+  D: { lat: 17.4320, lng: 78.4080, x: 140, y: 120, label: "Zone D", type: "danger", name: "Zone D (Accident)" },
+  C: { lat: 17.4260, lng: 78.4520, x: 120, y: 260, label: "Zone C", type: "danger", name: "Zone C (Flood)" },
+  B: { lat: 17.3830, lng: 78.4020, x: 250, y: 440, label: "Zone B", type: "danger", name: "Zone B (Fire)" },
+  E: { lat: 17.3320, lng: 78.4680, x: 370, y: 475, label: "Zone E", type: "danger", name: "Zone E (Landslide)" },
 
-  // Transit Hubs (Central corridor)
-  J_Banjara: { x: 320, y: 220, label: "Banjara Hills", type: "transit" },
-  J_Central: { x: 490, y: 270, label: "Hyderabad", type: "transit" },
-  J_Secunderabad: { x: 650, y: 150, label: "Secunderabad", type: "transit" },
-  J_Charminar: { x: 490, y: 420, label: "Charminar", type: "transit" },
+  // Transit Junctions
+  J_Banjara: { lat: 17.4160, lng: 78.4350, x: 320, y: 220, label: "Banjara Hills", type: "transit", name: "Banjara Hills" },
+  J_Central: { lat: 17.3910, lng: 78.4720, x: 490, y: 270, label: "Hyderabad", type: "transit", name: "Hyderabad Central" },
+  J_Secunderabad: { lat: 17.4410, lng: 78.5020, x: 650, y: 150, label: "Secunderabad", type: "transit", name: "Secunderabad" },
+  J_Charminar: { lat: 17.3616, lng: 78.4747, x: 490, y: 420, label: "Charminar", type: "transit", name: "Charminar" },
 
-  // Safe Shelters (Outer safe zones)
-  S01: { x: 180, y: 380, label: "S01", type: "shelter", name: "Shelter S01" },
-  S02: { x: 820, y: 120, label: "S02", type: "shelter", name: "Shelter S02" },
-  S03: { x: 800, y: 330, label: "S03", type: "shelter", name: "Shelter S03" },
-  S04: { x: 680, y: 440, label: "S04", type: "shelter", name: "Shelter S04" }
+  // Safe Shelters
+  S01: { lat: 17.3930, lng: 78.4410, x: 180, y: 380, label: "S01", type: "shelter", name: "Shelter S01 (Mehdipatnam)" },
+  S02: { lat: 17.4520, lng: 78.5080, x: 820, y: 120, label: "S02", type: "shelter", name: "Shelter S02 (Gymkhana)" },
+  S03: { lat: 17.4020, lng: 78.5520, x: 800, y: 330, label: "S03", type: "shelter", name: "Shelter S03 (Uppal)" },
+  S04: { lat: 17.3380, lng: 78.4890, x: 680, y: 440, label: "S04", type: "shelter", name: "Shelter S04 (Sports Arena)" }
 };
 
 const DEFAULT_SCENARIO = {

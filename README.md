@@ -188,34 +188,34 @@ The Node.js server (`server.js`) exposes genuine REST endpoints for all algorith
 
 ---
 
-## 🛠 6. Technology Stack Architecture
+## 🛠 6. Clean Technology Architecture
 
-This project is built using:
-1. **Python**: Pure Python implementation of DAA algorithms (`PriorityQueue` with `heapq`, `BFS` with `collections.deque`, `Dijkstra` with `heapq`, capacity validation, deterministic tie-breaking).
-2. **Flask**: REST API server (`backend/app.py`) providing `/calculate-priority`, `/priority-queue`, `/bfs`, `/dijkstra`, `/evacuation-plan`, and static web serving.
-3. **React**: Reactive component architecture (`js/react-app.js`) with React 18 hooks (`useState`, `useEffect`, `useCallback`, `useRef`).
-4. **Leaflet**: Real-time CartoDB Positron interactive map with custom pins, road polylines, blocked road toggles, glowing routes, and BFS halos.
+This project is organized into clean, necessary files:
+1. **Frontend & Map**: `index.html`, `css/style.css`, `js/map.js` (Leaflet interactive map with CartoDB Positron tiles, road toggling, glowing route, and BFS halos).
+2. **Algorithms Engine**: `js/algorithms.js` (Binary Max-Heap Priority Queue, BFS Reachability, Binary Min-Heap Dijkstra, Shelter Capacity Validation, and Why This Decision Explainer).
+3. **Application Controller**: `js/app.js` (Coordinates state, algorithm toggles, road failure simulations, comparison metrics, and visualizer).
+4. **Python & Flask Server**: `app.py` (Self-contained Flask REST API + static server).
+5. **Node Server**: `server.js` (Alternative zero-dependency Node.js server).
 
 ---
 
 ## 🚀 7. How to Run Locally
 
-### Option A: Python + Flask Server (Recommended)
-1. Install dependencies (if using external Python):
+### Option A: Run with Python & Flask
+1. Install Flask (if not already installed):
    ```bash
-   pip install -r backend/requirements.txt
+   pip install -r requirements.txt
    ```
-2. Start the Flask application:
+2. Start the Flask server:
    ```bash
-   python run_backend.py
+   python app.py
    ```
-   *(Or double-click `run_backend.bat` on Windows)*
 3. Open your browser at:
    ```
-   http://127.0.0.1:5000/
+   http://127.0.0.1:8080/
    ```
 
-### Option B: Node.js Server
+### Option B: Run with Node.js
 ```bash
 node server.js
 ```
@@ -225,14 +225,6 @@ http://localhost:8080/
 ```
 
 ### Running Automated Algorithmic Test Suites
-
-#### 1. Python Unit Test Suite:
-```bash
-python backend/test_algorithms.py
-```
-*(Runs 20 automated tests validating Priority Queue, BFS, Dijkstra, and Capacity Validation)*
-
-#### 2. JavaScript / Node.js Test Suite:
 ```bash
 node test_algorithms.js
 node test_full_simulation.js

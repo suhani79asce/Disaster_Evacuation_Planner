@@ -4,11 +4,9 @@
   "description": "Priority-Driven Emergency Evacuation Routing using Priority Queue, BFS, and Dijkstra's Algorithm",
   "main": "server.js",
   "scripts": {
-    "start": "python run_backend.py",
-    "start:flask": "python run_backend.py",
-    "start:node": "node server.js",
-    "test": "node test_algorithms.js && node test_full_simulation.js",
-    "test:python": "python backend/test_algorithms.py"
+    "start": "node server.js",
+    "start:flask": "python app.py",
+    "test": "node test_algorithms.js && node test_full_simulation.js"
   },
   "keywords": [
     "daa",

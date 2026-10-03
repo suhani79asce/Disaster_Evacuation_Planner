@@ -1237,6 +1237,11 @@ body.light-theme {
 .pill-green { color: #047857; border-color: #86efac; }
 .pill-blue { color: #0f172a; border-color: #cbd5e1; }
 
+.leaflet-pin-wrapper.bfs-visited .pin-badge,
+.leaflet-pin-wrapper.bfs-visited .transit-dot-hub {
+  box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.4), 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
 .leaflet-legend-box {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -1299,3 +1304,317 @@ body.light-theme {
 .map-tooltip .leaflet-tooltip-pane {
   z-index: 1000;
 }
+
+/* ==========================================================================
+   ALGORITHM COMPARISON & WHY THIS DECISION STYLES
+   ========================================================================== */
+
+/* 1. Comparison Panel */
+.algo-comparison-panel {
+  padding: 16px 20px;
+}
+
+.status-pill-blue {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.comparison-table-wrap {
+  overflow-x: auto;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.comparison-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border-light);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.comparison-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--border-card);
+  vertical-align: middle;
+}
+
+.algo-subtext {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.live-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border-light);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+}
+
+.chip-score {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+/* 2. Why This Decision? Panel */
+.why-decision-panel {
+  padding: 16px 20px;
+  background: #ffffff;
+  border-left: 4px solid var(--color-primary);
+}
+
+.tag-why-badge {
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 9999px;
+}
+
+.why-decision-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.why-section-card {
+  background: #f8fafc;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.why-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.why-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+}
+
+.why-tag.tag-red {
+  background: var(--color-red-bg);
+  color: var(--color-red);
+}
+
+.why-tag.tag-green {
+  background: var(--color-green-bg);
+  color: #15803d;
+}
+
+.why-target-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-dark);
+}
+
+.why-factors-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.why-factor-cell {
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.factor-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.factor-val {
+  font-size: 0.85rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.why-formula-banner {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.72rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-body);
+}
+
+.why-narrative-text {
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-body);
+  background: #ffffff;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  border-left: 3px solid var(--color-primary);
+}
+
+.why-narrative-text.text-green {
+  border-left-color: var(--color-green);
+}
+
+/* Shelter Decision Audit List */
+.shelter-decision-audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.audit-shelter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.74rem;
+}
+
+.audit-shelter-row.feasible {
+  border-left: 3px solid #10b981;
+}
+
+.audit-shelter-row.rejected {
+  border-left: 3px solid #ef4444;
+  opacity: 0.85;
+}
+
+.audit-shelter-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audit-status-badge {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.badge-feasible {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badge-rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badge-unreachable {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* Visualizer Detailed Box (Tentative costs / BFS levels) */
+.algo-detail-box {
+  background: #f8fafc;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.algo-detail-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.tentative-cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+}
+
+.tentative-cost-table th {
+  text-align: left;
+  padding: 4px 6px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.tentative-cost-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.bfs-level-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bfs-level-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+}
+
+.bfs-lvl-badge {
+  background: #e0f2fe;
+  color: #0284c7;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  min-width: 50px;
+  text-align: center;
+}
+
+.bfs-lvl-nodes {
+  font-family: var(--font-mono);
+  color: var(--text-dark);
+  font-weight: 600;
+}
+

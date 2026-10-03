@@ -215,6 +215,10 @@ class EvacuationMap {
     });
 
     // 2. RENDER MARKERS (Nodes)
+    const maxPop = scenario.zones && scenario.zones.length > 0 
+      ? Math.max(...scenario.zones.map(z => Number(z.population) || 0), 100) 
+      : 100;
+
     Object.keys(positions).forEach(id => {
       const pos = positions[id];
       if (!pos || !pos.lat || !pos.lng) return;
@@ -222,26 +226,27 @@ class EvacuationMap {
       const type = pos.type; // 'danger', 'shelter', 'transit'
       const isSource = this.activeSourceNode === id;
       const isTarget = this.activeTargetNode === id;
+      const isBfsVisited = this.bfsVisitedNodes.has(id);
 
       let iconHtml = "";
 
       if (type === "danger") {
         iconHtml = `
-          <div class="leaflet-pin-wrapper pin-danger ${isSource ? 'active-pulse' : ''}">
+          <div class="leaflet-pin-wrapper pin-danger ${isSource ? 'active-pulse' : ''} ${isBfsVisited ? 'bfs-visited' : ''}">
             <div class="pin-badge pin-bg-red">🔥</div>
             <div class="pin-label-pill pill-red">${pos.label}</div>
           </div>
         `;
       } else if (type === "shelter") {
         iconHtml = `
-          <div class="leaflet-pin-wrapper pin-shelter ${isTarget ? 'active-pulse' : ''}">
+          <div class="leaflet-pin-wrapper pin-shelter ${isTarget ? 'active-pulse' : ''} ${isBfsVisited ? 'bfs-visited' : ''}">
             <div class="pin-badge pin-bg-green">🏠</div>
             <div class="pin-label-pill pill-green">${id}</div>
           </div>
         `;
       } else {
         iconHtml = `
-          <div class="leaflet-pin-wrapper pin-transit">
+          <div class="leaflet-pin-wrapper pin-transit ${isBfsVisited ? 'bfs-visited' : ''}">
             <div class="transit-dot-hub"></div>
             <div class="pin-label-pill pill-blue">${pos.label}</div>
           </div>
@@ -256,7 +261,50 @@ class EvacuationMap {
       });
 
       const marker = L.marker([pos.lat, pos.lng], { icon: customIcon });
-      marker.bindPopup(`<strong>${pos.name || pos.label}</strong><br>Type: ${type.toUpperCase()}`);
+
+      // Rich Popups for DAA Inspector
+      if (type === "danger") {
+        const zoneData = scenario.zones ? scenario.zones.find(z => z.id === id) : null;
+        if (zoneData) {
+          const score = typeof calculateRiskScore === 'function' ? calculateRiskScore(zoneData, maxPop) : { riskScore: 88 };
+          marker.bindPopup(`
+            <div style="font-size: 12px; line-height: 1.4;">
+              <strong style="color: #ef4444; font-size: 13px;">🚨 ${zoneData.type} — ${zoneData.name}</strong><br>
+              <strong>Priority Score:</strong> ${score.riskScore.toFixed ? score.riskScore.toFixed(1) : score.riskScore}/100<br>
+              <strong>Threat Severity:</strong> ${zoneData.threatSeverity || 90}/100<br>
+              <strong>Population:</strong> ${zoneData.population} (${zoneData.remaining !== undefined ? zoneData.remaining : zoneData.population} waiting)<br>
+              <strong>Time Urgency:</strong> ${zoneData.timeUrgency || 85}/100<br>
+              <strong>Vulnerability:</strong> ${zoneData.vulnerability || 80}/100<br>
+              <div style="margin-top: 6px;">
+                <button onclick="window.evacApp.selectAndProcessZone('${id}')" style="background: #0284c7; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">
+                  Plan Evacuation Route
+                </button>
+              </div>
+            </div>
+          `);
+        } else {
+          marker.bindPopup(`<strong>${pos.name || pos.label}</strong><br>Disaster Hazard Zone`);
+        }
+      } else if (type === "shelter") {
+        const shelterData = scenario.shelters ? scenario.shelters.find(s => s.id === id) : null;
+        if (shelterData) {
+          const avail = Math.max(0, shelterData.totalCapacity - shelterData.currentOccupancy);
+          marker.bindPopup(`
+            <div style="font-size: 12px; line-height: 1.4;">
+              <strong style="color: #10b981; font-size: 13px;">🏠 ${shelterData.name}</strong><br>
+              <strong>Total Capacity:</strong> ${shelterData.totalCapacity}<br>
+              <strong>Occupied:</strong> ${shelterData.currentOccupancy}<br>
+              <strong>Available:</strong> <strong style="color: #0284c7;">${avail}</strong><br>
+              <strong>BFS Reachability:</strong> ${isBfsVisited ? '<span style="color: #16a34a; font-weight: bold;">Reachable</span>' : 'Pending'}<br>
+            </div>
+          `);
+        } else {
+          marker.bindPopup(`<strong>${pos.name || pos.label}</strong><br>Safe Evacuation Shelter`);
+        }
+      } else {
+        marker.bindPopup(`<strong>${pos.name || pos.label}</strong><br>Highway Transit Junction`);
+      }
+
       this.markersLayer.addLayer(marker);
     });
   }

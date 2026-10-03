@@ -349,6 +349,125 @@
 
         </div>
 
+        <!-- 3. DAA ALGORITHM COMPARISON & LIVE METRICS -->
+        <div class="panel-box algo-comparison-panel">
+          <div class="panel-head">
+            <div class="panel-title-wrap">
+              <span class="panel-icon text-blue">⚖</span>
+              <h3 class="panel-title">Algorithm Comparison</h3>
+            </div>
+            <span class="status-pill-blue">DAA Live Analysis</span>
+          </div>
+
+          <div class="comparison-table-wrap">
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>Purpose</th>
+                  <th>Theoretical Output</th>
+                  <th>Current Execution Example</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong class="text-red">Priority Queue</strong><br><span class="algo-subtext">Binary Max-Heap</span></td>
+                  <td>Evacuation prioritization</td>
+                  <td>Highest-priority zone</td>
+                  <td>
+                    <div class="live-metric-chip" id="cmpPqLive">
+                      <span>Selected: <strong id="cmpPqZone">Zone A</strong></span>
+                      <span class="chip-score" id="cmpPqScore">Score: 93.8</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong class="text-blue">BFS</strong><br><span class="algo-subtext">Queue Level Order</span></td>
+                  <td>Reachability / minimum hops</td>
+                  <td>Reachable shelters + hop count</td>
+                  <td>
+                    <div class="live-metric-chip" id="cmpBfsLive">
+                      <span>Reachable: <strong id="cmpBfsCount">4 Shelters</strong></span>
+                      <span class="chip-score" id="cmpBfsHops">Min Hops: 3 (S01)</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong class="text-green">Dijkstra</strong><br><span class="algo-subtext">Binary Min-Heap</span></td>
+                  <td>Minimum-cost routing</td>
+                  <td>Best feasible route + total cost</td>
+                  <td>
+                    <div class="live-metric-chip" id="cmpDijkstraLive">
+                      <span>Shelter: <strong id="cmpDijkstraShelter">S02</strong></span>
+                      <span class="chip-score" id="cmpDijkstraCost">Cost: 11.6 km</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 4. WHY THIS DECISION? EXPLANATION PANEL -->
+        <div class="panel-box why-decision-panel">
+          <div class="panel-head">
+            <div class="panel-title-wrap">
+              <span class="panel-icon text-yellow">💡</span>
+              <h3 class="panel-title">Why This Decision?</h3>
+            </div>
+            <span class="tag-why-badge">Deterministic Decision Engine</span>
+          </div>
+
+          <div class="why-decision-content">
+            <!-- Zone Prioritization Explanation -->
+            <div class="why-section-card">
+              <div class="why-section-header">
+                <span class="why-tag tag-red">WHY ZONE WAS PRIORITIZED</span>
+                <strong class="why-target-title" id="whyZoneTitle">Zone A Selection</strong>
+              </div>
+              <div class="why-factors-grid">
+                <div class="why-factor-cell">
+                  <span class="factor-label">Threat Severity (40%)</span>
+                  <strong class="factor-val text-red" id="whyThreatVal">95 / 100</strong>
+                </div>
+                <div class="why-factor-cell">
+                  <span class="factor-label">Population Factor (25%)</span>
+                  <strong class="factor-val text-blue" id="whyPopFactorVal">100 / 100</strong>
+                </div>
+                <div class="why-factor-cell">
+                  <span class="factor-label">Time Urgency (20%)</span>
+                  <strong class="factor-val text-yellow" id="whyUrgencyVal">90 / 100</strong>
+                </div>
+                <div class="why-factor-cell">
+                  <span class="factor-label">Vulnerability (15%)</span>
+                  <strong class="factor-val text-purple" id="whyVulnerabilityVal">85 / 100</strong>
+                </div>
+              </div>
+              <div class="why-formula-banner">
+                <span>Priority Score = 0.40(Threat) + 0.25(PopFactor) + 0.20(Urgency) + 0.15(Vulnerability)</span>
+                <strong class="text-red" id="whyPriorityScoreVal">93.8 / 100</strong>
+              </div>
+              <div class="why-narrative-text" id="whyZoneNarrative">
+                Zone A was selected because it has the highest Priority Score among all affected disaster zones, placing it at the root of the Priority Queue.
+              </div>
+            </div>
+
+            <!-- Shelter Selection Explanation -->
+            <div class="why-section-card">
+              <div class="why-section-header">
+                <span class="why-tag tag-green">WHY SHELTER WAS SELECTED</span>
+                <strong class="why-target-title" id="whyShelterTitle">Shelter S02 Selection</strong>
+              </div>
+              <div class="shelter-decision-audit-list" id="whyShelterAuditList">
+                <!-- Dynamically populated shelter feasibility list -->
+              </div>
+              <div class="why-narrative-text text-green" id="whyShelterNarrative">
+                Shelter S02 was selected because it is verified reachable via BFS, has sufficient available capacity (450 >= 320 needed), and minimizes the Dijkstra evacuation road travel cost (11.6 km).
+              </div>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       <!-- ==========================================
@@ -389,19 +508,27 @@
           <!-- Stepper Title -->
           <div class="visualizer-subhead" id="visualizerSubhead">Dijkstra Execution</div>
 
-          <!-- Execution Step List -->
+          <!-- Execution Step List / Levels -->
           <div class="algo-steps-list" id="algoStepsList">
-            <!-- Populated dynamically with Step 1..Step 5 -->
+            <!-- Populated dynamically with BFS Levels or Dijkstra Steps -->
+          </div>
+
+          <!-- Detailed Algorithmic Execution Breakdown (Tentative Costs Table / Level Inspector) -->
+          <div class="algo-detail-box" id="algoDetailBox">
+            <div class="algo-detail-title" id="algoDetailTitle">Tentative Costs & Node Relaxation</div>
+            <div class="algo-detail-content" id="algoDetailContent">
+              <!-- Dynamically populated with tentative cost table or BFS levels -->
+            </div>
           </div>
 
           <!-- Summary Badges: Final Cost & Path -->
           <div class="algo-results-strip">
             <div class="res-box">
-              <span class="res-label">Final Cost</span>
+              <span class="res-label" id="algoCostLabel">Final Cost</span>
               <strong class="res-number" id="algoFinalCostVal">8</strong>
             </div>
             <div class="res-box res-box-grow">
-              <span class="res-label">Path</span>
+              <span class="res-label" id="algoPathLabel">Reconstructed Path</span>
               <strong class="res-path" id="algoFinalPathVal">A → B → C → S2</strong>
             </div>
           </div>

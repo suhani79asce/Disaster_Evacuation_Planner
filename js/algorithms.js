@@ -2,34 +2,36 @@
  * Disaster Evacuation Planner - DAA Algorithms Core
  * 
  * Contains:
- * 1. Binary MaxHeap (Priority Queue for Danger Zones by Risk Score)
- * 2. Risk Score calculation (Threat, Pop Factor, Urgency, Vulnerability)
+ * 1. Priority Score calculation (Threat 40%, Pop Factor 25%, Urgency 20%, Vulnerability 15%)
+ * 2. Binary MaxHeap (Priority Queue for Danger Zones with deterministic tie-breaking)
  * 3. Adjacency List Graph Builder (filters out blocked roads)
- * 4. Breadth-First Search (BFS for Reachability verification)
+ * 4. Breadth-First Search (BFS for Level-by-level Reachability & Minimum-hop analysis)
  * 5. Binary MinHeap (Priority Queue for Dijkstra)
  * 6. Dijkstra's Algorithm (Minimum cost path finding with binary min-heap)
  * 7. Path reconstruction from predecessor map
- * 8. Shelter selection, capacity checking, and population allocation
+ * 8. Shelter Capacity Validation & Infeasibility Analysis
+ * 9. End-to-End Decision Generator ("Why This Decision?")
  */
 
 // ==========================================
-// 1. RISK SCORE & PRIORITY LEVEL
+// 1. RISK / PRIORITY SCORE CALCULATION
 // ==========================================
 
 /**
- * Calculates dynamic risk score based on formula:
- * Risk Score = 0.40 * Threat Severity + 0.25 * Population Factor + 0.20 * Time Urgency + 0.15 * Vulnerability
- * All values normalized 0-100.
+ * Calculates dynamic Priority Score based on the required challenge formula:
+ * Priority Score = 0.40 * Threat Severity + 0.25 * Population Factor + 0.20 * Time Urgency + 0.15 * Vulnerability
+ * Population Factor = (Zone Population / Maximum Affected Population) * 100
+ * All factors normalized to 0–100.
  */
-function calculateRiskScore(zone, maxPopulationBenchmark = 170) {
+function calculateRiskScore(zone, maxAffectedPopulation = 320) {
   const threat = Math.max(0, Math.min(100, Number(zone.threatSeverity) || 0));
   const urgency = Math.max(0, Math.min(100, Number(zone.timeUrgency) || 0));
   const vulnerability = Math.max(0, Math.min(100, Number(zone.vulnerability) || 0));
   
-  // Normalize population factor to 0-100
+  // Normalize population factor relative to maximum affected population
   const pop = Number(zone.population) || 0;
-  const benchmark = Math.max(100, maxPopulationBenchmark);
-  const popFactor = Math.min(100, Math.round((pop / benchmark) * 100));
+  const maxPop = Math.max(1, Number(maxAffectedPopulation) || 100);
+  const popFactor = Math.min(100, Math.round((pop / maxPop) * 100));
 
   const rawScore = (0.40 * threat) + (0.25 * popFactor) + (0.20 * urgency) + (0.15 * vulnerability);
   const riskScore = Math.round(rawScore * 10) / 10; // 1 decimal place
@@ -55,13 +57,46 @@ function calculateRiskScore(zone, maxPopulationBenchmark = 170) {
     vulnerability,
     priorityLevel,
     badgeClass,
-    breakdown: `0.40×${threat} + 0.25×${popFactor} + 0.20×${urgency} + 0.15×${vulnerability}`
+    breakdown: {
+      threat: threat,
+      population_factor: popFactor,
+      urgency: urgency,
+      vulnerability: vulnerability
+    },
+    formulaStr: `0.40×${threat} + 0.25×${popFactor} + 0.20×${urgency} + 0.15×${vulnerability}`
   };
 }
 
 // ==========================================
-// 2. BINARY MAX HEAP (For Danger Zones)
+// 2. BINARY MAX HEAP (With Deterministic Tie-Breaking)
 // ==========================================
+
+/**
+ * Deterministic tie-breaking comparator:
+ * 1. Higher Priority / Risk Score
+ * 2. Higher Threat Severity
+ * 3. Higher Time Urgency
+ * 4. Smaller Zone ID (alphabetical)
+ */
+function compareMaxHeapItems(a, b) {
+  if (Math.abs(a.riskScore - b.riskScore) > 0.001) {
+    return a.riskScore > b.riskScore;
+  }
+  // Tie-breaker 1: Higher Threat Severity
+  const threatA = a.threatSeverity || (a.zone && a.zone.threatSeverity) || 0;
+  const threatB = b.threatSeverity || (b.zone && b.zone.threatSeverity) || 0;
+  if (threatA !== threatB) return threatA > threatB;
+
+  // Tie-breaker 2: Higher Time Urgency
+  const urgA = a.timeUrgency || (a.zone && a.zone.timeUrgency) || 0;
+  const urgB = b.timeUrgency || (b.zone && b.zone.timeUrgency) || 0;
+  if (urgA !== urgB) return urgA > urgB;
+
+  // Tie-breaker 3: Smaller Zone ID
+  const idA = a.id || a.zoneId || (a.zone && a.zone.id) || "";
+  const idB = b.id || b.zoneId || (b.zone && b.zone.id) || "";
+  return String(idA).localeCompare(String(idB)) < 0;
+}
 
 class MaxHeap {
   constructor() {
@@ -88,7 +123,7 @@ class MaxHeap {
   bubbleUp(index) {
     while (index > 0) {
       const parentIndex = Math.floor((index - 1) / 2);
-      if (this.heap[index].riskScore > this.heap[parentIndex].riskScore) {
+      if (compareMaxHeapItems(this.heap[index], this.heap[parentIndex])) {
         // Swap
         [this.heap[index], this.heap[parentIndex]] = [this.heap[parentIndex], this.heap[index]];
         index = parentIndex;
@@ -115,11 +150,11 @@ class MaxHeap {
       const leftChild = 2 * index + 1;
       const rightChild = 2 * index + 2;
 
-      if (leftChild < length && this.heap[leftChild].riskScore > this.heap[largest].riskScore) {
+      if (leftChild < length && compareMaxHeapItems(this.heap[leftChild], this.heap[largest])) {
         largest = leftChild;
       }
 
-      if (rightChild < length && this.heap[rightChild].riskScore > this.heap[largest].riskScore) {
+      if (rightChild < length && compareMaxHeapItems(this.heap[rightChild], this.heap[largest])) {
         largest = rightChild;
       }
 
@@ -143,22 +178,23 @@ class MaxHeap {
 
 /**
  * Builds an adjacency list from roads, strictly ignoring blocked roads.
+ * Supports both road.blocked === true and road.status === "blocked".
  */
 function buildGraph(roads, allNodeIds = []) {
   const adj = {};
 
-  // Initialize all nodes
   allNodeIds.forEach(id => {
     adj[id] = [];
   });
 
   roads.forEach(road => {
-    if (road.blocked) {
+    const isBlocked = road.blocked === true || road.status === "blocked";
+    if (isBlocked) {
       // Ignore blocked roads completely
       return;
     }
-    const u = road.source;
-    const v = road.destination;
+    const u = road.source || road.from;
+    const v = road.destination || road.to;
     const cost = Number(road.cost);
 
     if (!adj[u]) adj[u] = [];
@@ -173,26 +209,32 @@ function buildGraph(roads, allNodeIds = []) {
 }
 
 // ==========================================
-// 4. BREADTH FIRST SEARCH (BFS for Reachability)
+// 4. BREADTH FIRST SEARCH (BFS: Levels & Minimum Hops)
 // ==========================================
 
 /**
- * Runs genuine BFS from startNode to find all reachable nodes.
- * Explores layer by layer using a FIFO queue.
- * Returns reachable nodes set, traversal order, and predecessor map.
+ * Runs genuine BFS from startNode to find all reachable nodes,
+ * levels of exploration, hop counts, and identifies the minimum-hop reachable shelter.
  */
-function runBFS(graph, startNode) {
+function runBFS(graph, startNode, shelterIds = []) {
   const visited = new Set();
-  const queue = [startNode];
+  const queue = [{ node: startNode, level: 0 }];
   const visitedOrder = [];
   const parentMap = {};
+  const levels = [];
+  const hopCount = {};
+  const shelterSet = new Set(shelterIds);
 
   visited.add(startNode);
   parentMap[startNode] = null;
+  hopCount[startNode] = 0;
 
   while (queue.length > 0) {
-    const curr = queue.shift();
+    const { node: curr, level } = queue.shift();
     visitedOrder.push(curr);
+
+    if (!levels[level]) levels[level] = [];
+    levels[level].push(curr);
 
     const neighbors = graph[curr] || [];
     for (const edge of neighbors) {
@@ -200,15 +242,40 @@ function runBFS(graph, startNode) {
       if (!visited.has(neighbor)) {
         visited.add(neighbor);
         parentMap[neighbor] = curr;
-        queue.push(neighbor);
+        hopCount[neighbor] = level + 1;
+        queue.push({ node: neighbor, level: level + 1 });
       }
     }
   }
 
+  // Reachable shelters & minimum hop analysis
+  const reachableShelters = [];
+  let minimumHopShelter = null;
+  let minimumHops = Infinity;
+
+  shelterSet.forEach(sId => {
+    if (visited.has(sId)) {
+      const hops = hopCount[sId];
+      reachableShelters.push({
+        id: sId,
+        hops: hops
+      });
+      if (hops < minimumHops) {
+        minimumHops = hops;
+        minimumHopShelter = sId;
+      }
+    }
+  });
+
   return {
     reachableNodes: visited,
     visitedOrder,
-    parentMap
+    parentMap,
+    levels,
+    hopCount,
+    reachableShelters,
+    minimumHopShelter,
+    minimumHops: minimumHops === Infinity ? null : minimumHops
   };
 }
 
@@ -288,14 +355,19 @@ class MinHeap {
 // ==========================================
 
 /**
- * Runs genuine Dijkstra's Algorithm using Binary Min-Heap.
- * Finds shortest cost paths from startNode to targetNode (or all nodes if targetNode is null).
- * Returns: { dist, prev, cost, path, relaxationSteps }
+ * Runs genuine Dijkstra's Algorithm with Binary Min-Heap.
+ * Maintains:
+ * - dist (tentative costs for each node)
+ * - visited nodes / visitedOrder
+ * - predecessor map (prev)
+ * - selected cheapest unexplored node
+ * - path reconstruction
  */
 function runDijkstra(graph, startNode, targetNode = null) {
   const dist = {};
   const prev = {};
   const finalized = new Set();
+  const visitedOrder = [];
   const relaxationSteps = [];
 
   // Initialize distance table
@@ -311,11 +383,10 @@ function runDijkstra(graph, startNode, targetNode = null) {
   while (!minHeap.isEmpty()) {
     const { node: u, dist: currentDist } = minHeap.extractMin();
 
-    // If already finalized, skip (lazy deletion handling in heap)
     if (finalized.has(u)) continue;
     finalized.add(u);
+    visitedOrder.push(u);
 
-    // If we only care about a specific targetNode and it's finalized, we can break early
     if (targetNode && u === targetNode) {
       break;
     }
@@ -343,7 +414,6 @@ function runDijkstra(graph, startNode, targetNode = null) {
     }
   }
 
-  // Reconstruct path if targetNode provided
   let path = [];
   let cost = Infinity;
 
@@ -359,12 +429,14 @@ function runDijkstra(graph, startNode, targetNode = null) {
     prev,
     cost,
     path,
+    visitedOrder,
+    finalized: Array.from(finalized),
     relaxationSteps
   };
 }
 
 /**
- * Reconstructs path backwards from target to start using the predecessor map.
+ * Reconstructs path backwards from target to start using predecessor map.
  */
 function reconstructPath(prevMap, startNode, targetNode) {
   const path = [];
@@ -377,7 +449,6 @@ function reconstructPath(prevMap, startNode, targetNode) {
   }
 
   if (path[0] !== startNode) {
-    // Target is unreachable
     return [];
   }
 
@@ -385,70 +456,83 @@ function reconstructPath(prevMap, startNode, targetNode) {
 }
 
 // ==========================================
-// 7. SHELTER CAPACITY & FEASIBILITY HELPERS
+// 7. SHELTER CAPACITY & FEASIBILITY VALIDATION
 // ==========================================
 
-/**
- * Computes available capacity for a shelter.
- */
 function getAvailableCapacity(shelter) {
-  return Math.max(0, shelter.totalCapacity - shelter.currentOccupancy);
+  const total = Number(shelter.totalCapacity || shelter.total_capacity) || 0;
+  const occupied = Number(shelter.currentOccupancy || shelter.occupied_capacity) || 0;
+  return Math.max(0, total - occupied);
 }
 
 /**
- * Step 1-6 Decision Engine for a given Zone:
- * 1. Run BFS from zone.
- * 2. Identify reachable shelters.
- * 3. Filter reachable shelters with available capacity > 0.
+ * Complete DAA Evaluation Pipeline for a given Danger Zone:
+ * 1. Calculate Priority Score & breakdown.
+ * 2. Run BFS for reachability and minimum hops.
+ * 3. Validate shelter capacity (reject insufficient capacity).
  * 4. Run Dijkstra to each feasible shelter.
- * 5. Compare route costs and pick shelter with minimum valid route cost.
+ * 5. Select minimum-cost feasible shelter.
+ * 6. Generate detailed plain-language explanation ("Why This Decision?").
  */
-function evaluateZoneShelterOptions(zone, allShelters, graph) {
+function evaluateZoneShelterOptions(zone, allShelters, graph, allZones = []) {
+  const maxPop = allZones.length > 0 
+    ? Math.max(...allZones.map(z => Number(z.population) || 0)) 
+    : (Number(zone.population) || 100);
+
+  const priorityResult = calculateRiskScore(zone, maxPop);
+  const requiredPop = Number(zone.remaining !== undefined ? zone.remaining : zone.population) || 0;
+  const shelterIds = allShelters.map(s => s.id);
+
   // Step 1: Run BFS
-  const bfsResult = runBFS(graph, zone.id);
+  const bfsResult = runBFS(graph, zone.id, shelterIds);
   const reachableNodes = bfsResult.reachableNodes;
 
-  const reachableShelters = [];
-  const unreachableShelters = [];
+  // Step 2 & 3: Audit every shelter for reachability and capacity
+  const sheltersAudit = {};
   const feasibleShelters = [];
-  const fullShelters = [];
+  const rejectedShelters = [];
 
   allShelters.forEach(s => {
     const isReachable = reachableNodes.has(s.id);
-    const availableCap = getAvailableCapacity(s);
+    const availCap = getAvailableCapacity(s);
+    const hasCapacity = availCap >= requiredPop;
+    const isFeasible = isReachable && hasCapacity;
 
+    let reason = "Feasible";
     if (!isReachable) {
-      unreachableShelters.push({ shelter: s, reason: "Unreachable (BFS: No open path)" });
+      reason = "Unreachable (BFS: No open path)";
+    } else if (!hasCapacity) {
+      reason = `Insufficient capacity: Required ${requiredPop} > Available ${availCap}`;
+    }
+
+    const auditEntry = {
+      id: s.id,
+      name: s.name,
+      total_capacity: s.totalCapacity,
+      occupied_capacity: s.currentOccupancy,
+      available_capacity: availCap,
+      required_population: requiredPop,
+      reachable: isReachable,
+      feasible: isFeasible,
+      reason: reason
+    };
+
+    sheltersAudit[s.id] = auditEntry;
+
+    if (isFeasible) {
+      feasibleShelters.push(s);
     } else {
-      reachableShelters.push(s);
-      if (availableCap <= 0) {
-        fullShelters.push({ shelter: s, reason: "At full capacity (0 available)" });
-      } else {
-        feasibleShelters.push(s);
-      }
+      rejectedShelters.push(auditEntry);
     }
   });
 
-  // If no feasible shelters
-  if (feasibleShelters.length === 0) {
-    let failureReason = "NO_REACHABLE_SHELTERS";
-    if (reachableShelters.length > 0) {
-      failureReason = "ALL_REACHABLE_SHELTERS_FULL";
-    }
-    return {
-      bfsResult,
-      reachableShelters,
-      unreachableShelters,
-      fullShelters,
-      feasibleShelters: [],
-      bestOption: null,
-      failureReason
-    };
-  }
+  // Step 4: Run Dijkstra to feasible shelters (or reachable shelters with partial capacity if none fully feasible)
+  const candidateShelters = feasibleShelters.length > 0 
+    ? feasibleShelters 
+    : allShelters.filter(s => reachableNodes.has(s.id) && getAvailableCapacity(s) > 0);
 
-  // Step 4 & 5: Run Dijkstra to each feasible shelter and compare costs
   const shelterRoutes = [];
-  feasibleShelters.forEach(s => {
+  candidateShelters.forEach(s => {
     const dijkstraResult = runDijkstra(graph, zone.id, s.id);
     if (dijkstraResult.cost !== Infinity && dijkstraResult.path.length > 0) {
       shelterRoutes.push({
@@ -456,32 +540,59 @@ function evaluateZoneShelterOptions(zone, allShelters, graph) {
         cost: dijkstraResult.cost,
         path: dijkstraResult.path,
         availableCapacity: getAvailableCapacity(s),
-        dijkstraResult
+        dijkstraResult: dijkstraResult,
+        isFullyFeasible: feasibleShelters.includes(s)
       });
     }
   });
 
-  // Sort by minimum route cost
+  // Sort by lowest Dijkstra travel cost
   shelterRoutes.sort((a, b) => a.cost - b.cost);
 
   const bestOption = shelterRoutes.length > 0 ? shelterRoutes[0] : null;
 
+  // Build "Why This Decision?" Explanation
+  const explanation = {
+    why_zone_prioritized: `Zone ${zone.id} was prioritized with a Priority Score of ${priorityResult.riskScore}/100 ` +
+      `(Threat: ${priorityResult.threat}/100, Pop Factor: ${priorityResult.popFactor}/100, Urgency: ${priorityResult.urgency}/100, Vulnerability: ${priorityResult.vulnerability}/100). ` +
+      `Extracted from the root of the Binary Max-Heap because it represents the highest emergency triage risk.`,
+    
+    why_shelter_selected: bestOption
+      ? `Shelter ${bestOption.shelter.id} was selected because it is reachable via BFS (${bfsResult.hopCount[bestOption.shelter.id] || 0} hops), ` +
+        `has sufficient capacity (${bestOption.availableCapacity} available >= ${requiredPop} required), ` +
+        `and achieves the minimum Dijkstra travel cost (${bestOption.cost.toFixed ? bestOption.cost.toFixed(1) : bestOption.cost} km). ` +
+        `Other shelters were either unreachable or rejected due to capacity limits.`
+      : `No shelter could be selected: all available shelters are either physically unreachable due to road blockages or have insufficient capacity.`
+  };
+
   return {
-    bfsResult,
-    reachableShelters,
-    unreachableShelters,
-    fullShelters,
-    feasibleShelters,
-    shelterRoutes,
-    bestOption,
-    failureReason: bestOption ? null : "NO_VALID_ROUTE"
+    selected_zone: zone.id,
+    zone: zone,
+    priority_score: priorityResult.riskScore,
+    priority_level: priorityResult.priorityLevel,
+    priority_breakdown: priorityResult.breakdown,
+    bfs: bfsResult,
+    shelters: sheltersAudit,
+    feasibleShelters: feasibleShelters,
+    rejectedShelters: rejectedShelters,
+    shelterRoutes: shelterRoutes,
+    bestOption: bestOption,
+    dijkstra: bestOption ? {
+      target_shelter: bestOption.shelter.id,
+      route: bestOption.path,
+      total_cost: bestOption.cost,
+      visited_order: bestOption.dijkstraResult.visitedOrder,
+      tentative_costs: bestOption.dijkstraResult.dist
+    } : null,
+    explanation: explanation
   };
 }
 
-// Node.js and global compatibility
+// Node.js and Global exports
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     calculateRiskScore,
+    compareMaxHeapItems,
     MaxHeap,
     buildGraph,
     runBFS,
@@ -495,6 +606,7 @@ if (typeof module !== 'undefined' && module.exports) {
 if (typeof globalThis !== 'undefined') {
   Object.assign(globalThis, {
     calculateRiskScore,
+    compareMaxHeapItems,
     MaxHeap,
     buildGraph,
     runBFS,

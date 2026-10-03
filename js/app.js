@@ -63,8 +63,33 @@ class DisasterEvacuationApp {
     this.btnTabDijkstra = document.getElementById("btnTabDijkstra");
     this.visualizerSubhead = document.getElementById("visualizerSubhead");
     this.algoStepsList = document.getElementById("algoStepsList");
+    this.algoDetailBox = document.getElementById("algoDetailBox");
+    this.algoDetailTitle = document.getElementById("algoDetailTitle");
+    this.algoDetailContent = document.getElementById("algoDetailContent");
+    this.algoCostLabel = document.getElementById("algoCostLabel");
     this.algoFinalCostVal = document.getElementById("algoFinalCostVal");
+    this.algoPathLabel = document.getElementById("algoPathLabel");
     this.algoFinalPathVal = document.getElementById("algoFinalPathVal");
+
+    // Algorithm Comparison Elements
+    this.cmpPqZone = document.getElementById("cmpPqZone");
+    this.cmpPqScore = document.getElementById("cmpPqScore");
+    this.cmpBfsCount = document.getElementById("cmpBfsCount");
+    this.cmpBfsHops = document.getElementById("cmpBfsHops");
+    this.cmpDijkstraShelter = document.getElementById("cmpDijkstraShelter");
+    this.cmpDijkstraCost = document.getElementById("cmpDijkstraCost");
+
+    // Why This Decision? Elements
+    this.whyZoneTitle = document.getElementById("whyZoneTitle");
+    this.whyThreatVal = document.getElementById("whyThreatVal");
+    this.whyPopFactorVal = document.getElementById("whyPopFactorVal");
+    this.whyUrgencyVal = document.getElementById("whyUrgencyVal");
+    this.whyVulnerabilityVal = document.getElementById("whyVulnerabilityVal");
+    this.whyPriorityScoreVal = document.getElementById("whyPriorityScoreVal");
+    this.whyZoneNarrative = document.getElementById("whyZoneNarrative");
+    this.whyShelterTitle = document.getElementById("whyShelterTitle");
+    this.whyShelterAuditList = document.getElementById("whyShelterAuditList");
+    this.whyShelterNarrative = document.getElementById("whyShelterNarrative");
 
     // Simulation Modal
     this.simulationModal = document.getElementById("simulationModal");
@@ -125,6 +150,16 @@ class DisasterEvacuationApp {
     if (this.btnSimReset) {
       this.btnSimReset.addEventListener("click", () => this.resetSimulation());
     }
+    if (this.simPresetSelect) {
+      this.simPresetSelect.addEventListener("change", (e) => {
+        const presetKey = e.target.value;
+        if (PRESETS[presetKey]) {
+          this.scenario = cloneScenario({ ...PRESETS[presetKey], nodePositions: NODE_POSITIONS });
+          this.renderAll();
+          this.executeAlgorithm("DIJKSTRA", this.scenario.zones[0].id);
+        }
+      });
+    }
   }
 
   startClock() {
@@ -143,16 +178,20 @@ class DisasterEvacuationApp {
     if (this.activeAlgorithm === "DIJKSTRA") {
       this.btnTabDijkstra.classList.add("active");
       this.btnTabBFS.classList.remove("active");
-      this.visualizerSubhead.textContent = "Dijkstra Execution";
+      this.visualizerSubhead.textContent = `Dijkstra Route Execution (Zone ${this.activeZoneId})`;
+      if (this.algoCostLabel) this.algoCostLabel.textContent = "Final Route Cost";
+      if (this.algoPathLabel) this.algoPathLabel.textContent = "Reconstructed Path";
     } else {
       this.btnTabBFS.classList.add("active");
       this.btnTabDijkstra.classList.remove("active");
-      this.visualizerSubhead.textContent = "BFS Reachability Execution";
+      this.visualizerSubhead.textContent = `BFS Reachability Execution (Zone ${this.activeZoneId})`;
+      if (this.algoCostLabel) this.algoCostLabel.textContent = "Minimum Hops";
+      if (this.algoPathLabel) this.algoPathLabel.textContent = "Nearest Shelter";
     }
   }
 
   // ==========================================
-  // CORE DAA ALGORITHM EXECUTION
+  // CORE DAA ALGORITHM EXECUTION PIPELINE
   // ==========================================
 
   executeAlgorithm(algoType, zoneId = "A", preferredShelterId = null) {
@@ -162,15 +201,24 @@ class DisasterEvacuationApp {
     const allNodeIds = Object.keys(this.scenario.nodePositions);
     const graph = buildGraph(this.scenario.roads, allNodeIds);
 
-    const blockedCount = this.scenario.roads.filter(r => r.blocked).length;
-    this.routeBlockedVal.textContent = blockedCount;
+    const blockedCount = this.scenario.roads.filter(r => r.blocked || r.status === "blocked").length;
+    if (this.routeBlockedVal) this.routeBlockedVal.textContent = blockedCount;
+
+    // Run the complete integrated DAA evaluation pipeline:
+    // Priority Queue -> BFS Reachability -> Shelter Capacity Validation -> Dijkstra Min-Cost Route
+    const evaluation = evaluateZoneShelterOptions(zone, this.scenario.shelters, graph, this.scenario.zones);
+    const best = evaluation.bestOption;
+
+    // Update Comparison and "Why This Decision?" panels with live calculated data
+    this.renderAlgorithmComparison(evaluation, zone);
+    this.renderWhyThisDecision(evaluation, zone);
+    this.renderSheltersList(evaluation);
 
     if (algoType === "BFS") {
-      // 1. Run BFS
-      const bfsResult = runBFS(graph, zone.id);
+      // 1. BFS Execution Mode
+      const bfsResult = evaluation.bfs;
       this.map.setBfsVisited(Array.from(bfsResult.reachableNodes));
 
-      // Find reachable shelters
       const reachableShelters = this.scenario.shelters.filter(s => bfsResult.reachableNodes.has(s.id));
       const targetShelter = preferredShelterId 
         ? (reachableShelters.find(s => s.id === preferredShelterId) || reachableShelters[0])
@@ -185,123 +233,274 @@ class DisasterEvacuationApp {
       this.map.render(this.scenario);
 
       // Update UI Route Information
-      this.routeEmergencyVal.textContent = `${zone.type} — ${zone.name}`;
-      this.routeDestinationVal.textContent = targetShelter ? targetShelter.name : "None Reachable";
-      this.routeAlgorithmVal.textContent = "BFS";
-      this.routeDistVal.textContent = `${path.length * 2.2} km`;
-      this.routeCostVal.textContent = `${path.length} hops`;
-      this.routeTimeVal.textContent = `${path.length * 3} min`;
-      this.routePathSequence.textContent = path.join(" → ") || "No open route";
+      if (this.routeEmergencyVal) this.routeEmergencyVal.textContent = `${zone.type} — ${zone.name}`;
+      if (this.routeDestinationVal) this.routeDestinationVal.textContent = targetShelter ? targetShelter.name : "None Reachable";
+      if (this.routeAlgorithmVal) this.routeAlgorithmVal.textContent = "BFS (HOP-COUNT)";
+      if (this.routeDistVal) this.routeDistVal.textContent = `${path.length * 2.5} km`;
+      if (this.routeCostVal) this.routeCostVal.textContent = `${Math.max(0, path.length - 1)} hops`;
+      if (this.routeTimeVal) this.routeTimeVal.textContent = `${(path.length - 1) * 3} min`;
+      if (this.routePathSequence) this.routePathSequence.textContent = path.join(" → ") || "No open route";
 
-      // Render Visualizer steps for BFS
-      this.renderBFSSteps(bfsResult, path);
+      // Render Visualizer for BFS
+      this.renderBFSSteps(bfsResult, path, targetShelter);
 
     } else {
-      // 2. Run Dijkstra with Binary Min-Heap
-      let bestEvaluation = evaluateZoneShelterOptions(zone, this.scenario.shelters, graph);
-      let best = bestEvaluation.bestOption;
-
-      if (!best && preferredShelterId) {
-        const directDijkstra = runDijkstra(graph, zone.id, preferredShelterId);
-        if (directDijkstra.cost !== Infinity) {
-          best = {
-            shelter: this.scenario.shelters.find(s => s.id === preferredShelterId),
-            cost: directDijkstra.cost,
-            path: directDijkstra.path,
-            dijkstraResult: directDijkstra
-          };
-        }
-      }
-
+      // 2. Dijkstra Execution Mode
       if (best) {
         this.activeShelterId = best.shelter.id;
+        this.map.setBfsVisited(Array.from(evaluation.bfs.reachableNodes));
         this.map.setActiveRoute(best.path, zone.id, best.shelter.id);
         this.map.render(this.scenario);
 
         // Update UI Route Information
-        this.routeEmergencyVal.textContent = `${zone.type} — ${zone.name}`;
-        this.routeDestinationVal.textContent = best.shelter.name;
-        this.routeAlgorithmVal.textContent = "DIJKSTRA";
-        this.routeDistVal.textContent = `${best.cost.toFixed(1)} km`;
-        this.routeCostVal.textContent = `${Math.round(best.cost * 1.6)}`;
-        this.routeTimeVal.textContent = `${Math.round(best.cost * 1.4)} min`;
-        this.routePathSequence.textContent = best.path.join(" → ");
+        if (this.routeEmergencyVal) this.routeEmergencyVal.textContent = `${zone.type} — ${zone.name}`;
+        if (this.routeDestinationVal) this.routeDestinationVal.textContent = best.shelter.name;
+        if (this.routeAlgorithmVal) this.routeAlgorithmVal.textContent = "DIJKSTRA (MIN-COST)";
+        if (this.routeDistVal) this.routeDistVal.textContent = `${best.cost.toFixed(1)} km`;
+        if (this.routeCostVal) this.routeCostVal.textContent = `${best.cost.toFixed(1)}`;
+        if (this.routeTimeVal) this.routeTimeVal.textContent = `${Math.round(best.cost * 1.5)} min`;
+        if (this.routePathSequence) this.routePathSequence.textContent = best.path.join(" → ");
 
-        // Render Visualizer steps for Dijkstra
-        this.renderDijkstraSteps(best.dijkstraResult, best.path, best.cost);
+        // Render Visualizer for Dijkstra
+        this.renderDijkstraSteps(best.dijkstraResult, best.path, best.cost, zone.id, best.shelter.id);
       } else {
-        this.routePathSequence.textContent = "NO FEASIBLE ROUTE AVAILABLE";
-        this.algoStepsList.innerHTML = `<div class="algo-step-row text-red"><strong>Failure:</strong> No unblocked path to any available shelter.</div>`;
+        this.map.setActiveRoute([], zone.id, null);
+        this.map.render(this.scenario);
+
+        if (this.routePathSequence) this.routePathSequence.textContent = "⚠ NO FEASIBLE ROUTE AVAILABLE";
+        if (this.algoStepsList) {
+          this.algoStepsList.innerHTML = `<div class="algo-step-row text-red"><strong>Failure:</strong> No capacity-feasible shelter is reachable from ${zone.name} via open roads.</div>`;
+        }
+        if (this.algoDetailContent) {
+          this.algoDetailContent.innerHTML = `<div class="text-red font-mono" style="padding: 6px;">All candidate shelters are either unreachable (BFS: no open path) or rejected due to capacity limits.</div>`;
+        }
+        if (this.algoFinalCostVal) this.algoFinalCostVal.textContent = "∞";
+        if (this.algoFinalPathVal) this.algoFinalPathVal.textContent = "None";
       }
     }
   }
 
-  renderDijkstraSteps(dijkstraResult, path, totalCost) {
-    if (!this.algoStepsList) return;
+  // ==========================================
+  // ALGORITHM COMPARISON & LIVE METRICS
+  // ==========================================
 
-    let stepHtml = `
-      <div class="algo-step-row">
-        <span class="step-badge">Step 1</span>
-        <span class="step-details">Start Node: ${path[0]}</span>
-      </div>
-    `;
+  renderAlgorithmComparison(evaluation, zone) {
+    if (this.cmpPqZone) this.cmpPqZone.textContent = zone.name;
+    if (this.cmpPqScore) this.cmpPqScore.textContent = `Score: ${evaluation.priority_score.toFixed(1)}`;
 
-    for (let i = 0; i < path.length; i++) {
-      const node = path[i];
-      const dist = dijkstraResult && dijkstraResult.dist && dijkstraResult.dist[node] !== undefined 
-        ? dijkstraResult.dist[node] 
-        : i * 3.5;
-
-      stepHtml += `
-        <div class="algo-step-row">
-          <span class="step-badge">Step ${i + 2}</span>
-          <span class="step-details">Visited: ${node} &nbsp;|&nbsp; Distance: ${dist.toFixed ? dist.toFixed(1) : dist}</span>
-        </div>
-      `;
+    const rShelters = evaluation.bfs.reachableShelters || [];
+    if (this.cmpBfsCount) this.cmpBfsCount.textContent = `${rShelters.length} Shelters`;
+    if (this.cmpBfsHops) {
+      this.cmpBfsHops.textContent = evaluation.bfs.minimumHopShelter 
+        ? `Min Hops: ${evaluation.bfs.minimumHops} (${evaluation.bfs.minimumHopShelter})`
+        : "None Reachable";
     }
 
-    stepHtml += `
-      <div class="algo-step-row">
-        <span class="step-badge">Step ${path.length + 2}</span>
-        <span class="step-details text-green"><strong>Destination reached (${path[path.length - 1]})</strong></span>
-      </div>
-    `;
-
-    this.algoStepsList.innerHTML = stepHtml;
-    this.algoFinalCostVal.textContent = totalCost.toFixed ? totalCost.toFixed(1) : totalCost;
-    this.algoFinalPathVal.textContent = path.join(" → ");
+    const best = evaluation.bestOption;
+    if (this.cmpDijkstraShelter) {
+      this.cmpDijkstraShelter.textContent = best ? best.shelter.name : "None Feasible";
+    }
+    if (this.cmpDijkstraCost) {
+      this.cmpDijkstraCost.textContent = best ? `Cost: ${best.cost.toFixed(1)} km` : "Cost: ∞";
+    }
   }
 
-  renderBFSSteps(bfsResult, path) {
+  // ==========================================
+  // WHY THIS DECISION? EXPLANATION PANEL
+  // ==========================================
+
+  renderWhyThisDecision(evaluation, zone) {
+    const bd = evaluation.priority_breakdown;
+    if (this.whyZoneTitle) this.whyZoneTitle.textContent = `${zone.name} Selection`;
+    if (this.whyThreatVal) this.whyThreatVal.textContent = `${bd.threat} / 100`;
+    if (this.whyPopFactorVal) this.whyPopFactorVal.textContent = `${bd.population_factor} / 100`;
+    if (this.whyUrgencyVal) this.whyUrgencyVal.textContent = `${bd.urgency} / 100`;
+    if (this.whyVulnerabilityVal) this.whyVulnerabilityVal.textContent = `${bd.vulnerability} / 100`;
+    if (this.whyPriorityScoreVal) this.whyPriorityScoreVal.textContent = `${evaluation.priority_score.toFixed(1)} / 100`;
+    if (this.whyZoneNarrative) this.whyZoneNarrative.textContent = evaluation.explanation.why_zone_prioritized;
+
+    const best = evaluation.bestOption;
+    if (this.whyShelterTitle) {
+      this.whyShelterTitle.textContent = best ? `${best.shelter.name} Selection` : "No Feasible Shelter";
+    }
+    if (this.whyShelterNarrative) {
+      this.whyShelterNarrative.textContent = evaluation.explanation.why_shelter_selected;
+    }
+
+    if (this.whyShelterAuditList) {
+      const auditHtml = Object.values(evaluation.shelters).map(s => {
+        const isFeas = s.feasible;
+        const statusClass = isFeas ? "feasible" : "rejected";
+        const badgeClass = isFeas ? "badge-feasible" : (s.reachable ? "badge-rejected" : "badge-unreachable");
+        const statusLabel = isFeas ? "FEASIBLE" : (s.reachable ? "REJECTED: CAPACITY" : "UNREACHABLE");
+
+        return `
+          <div class="audit-shelter-row ${statusClass}">
+            <div class="audit-shelter-info">
+              <span class="audit-status-badge ${badgeClass}">${statusLabel}</span>
+              <strong>${s.name}</strong>
+              <span class="text-muted">(Avail: ${s.available_capacity} | Req: ${s.required_population})</span>
+            </div>
+            <div class="font-mono text-dim">
+              ${s.reason}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      this.whyShelterAuditList.innerHTML = auditHtml;
+    }
+  }
+
+  // ==========================================
+  // DIJKSTRA STEP-BY-STEP VISUALIZER
+  // ==========================================
+
+  renderDijkstraSteps(dijkstraResult, path, totalCost, startNode, targetNode) {
     if (!this.algoStepsList) return;
 
     let stepHtml = `
       <div class="algo-step-row">
-        <span class="step-badge">BFS 1</span>
-        <span class="step-details">Queue Root: ${this.activeZoneId}</span>
+        <span class="step-badge">Start</span>
+        <span class="step-details">Root: Zone ${startNode} (Cost: 0.0)</span>
       </div>
     `;
 
-    const order = bfsResult.visitedOrder.slice(0, 5);
-    order.forEach((node, idx) => {
+    const visited = dijkstraResult.visitedOrder || path;
+    visited.slice(0, 6).forEach((node, idx) => {
+      const costVal = dijkstraResult.dist && dijkstraResult.dist[node] !== undefined 
+        ? dijkstraResult.dist[node].toFixed(1)
+        : idx * 3.5;
+      const isFinal = path.includes(node);
+
       stepHtml += `
         <div class="algo-step-row">
-          <span class="step-badge">BFS ${idx + 2}</span>
-          <span class="step-details">Discovered: ${node} &nbsp;|&nbsp; Status: REACHABLE</span>
+          <span class="step-badge">Visit ${idx + 1}</span>
+          <span class="step-details font-mono">
+            Node: <strong>${node}</strong> &nbsp;|&nbsp; Tentative: <strong>${costVal}</strong>
+            ${isFinal ? ' <span class="text-green font-bold">✔ On Path</span>' : ''}
+          </span>
         </div>
       `;
     });
 
     stepHtml += `
       <div class="algo-step-row">
-        <span class="step-badge">Complete</span>
-        <span class="step-details text-green"><strong>Reachable Shelters: [S01, S02]</strong></span>
+        <span class="step-badge">Goal</span>
+        <span class="step-details text-green"><strong>Target ${targetNode} reached with cost ${totalCost.toFixed(1)} km</strong></span>
       </div>
     `;
 
     this.algoStepsList.innerHTML = stepHtml;
-    this.algoFinalCostVal.textContent = `${path.length - 1} hops`;
-    this.algoFinalPathVal.textContent = path.join(" → ");
+
+    // Render Tentative Costs Table in Detail Box
+    if (this.algoDetailContent && dijkstraResult.dist) {
+      if (this.algoDetailTitle) this.algoDetailTitle.textContent = "Dijkstra Tentative Costs & Relaxation Table";
+      
+      let tableHtml = `
+        <table class="tentative-cost-table">
+          <thead>
+            <tr>
+              <th>Node</th>
+              <th>Tentative Cost</th>
+              <th>Predecessor</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      Object.keys(dijkstraResult.dist).forEach(node => {
+        const c = dijkstraResult.dist[node];
+        const prev = dijkstraResult.prev[node] || "-";
+        const isExplored = dijkstraResult.visitedOrder.includes(node);
+        const costStr = c === Infinity ? "∞" : c.toFixed(1) + " km";
+
+        tableHtml += `
+          <tr>
+            <td><strong>${node}</strong></td>
+            <td>${costStr}</td>
+            <td>${prev}</td>
+            <td>${isExplored ? '<span class="text-green">Explored</span>' : '<span class="text-dim">Pending</span>'}</td>
+          </tr>
+        `;
+      });
+
+      tableHtml += `</tbody></table>`;
+      this.algoDetailContent.innerHTML = tableHtml;
+    }
+
+    if (this.algoFinalCostVal) this.algoFinalCostVal.textContent = `${totalCost.toFixed(1)} km`;
+    if (this.algoFinalPathVal) this.algoFinalPathVal.textContent = path.join(" → ");
+  }
+
+  // ==========================================
+  // BFS STEP-BY-STEP VISUALIZER
+  // ==========================================
+
+  renderBFSSteps(bfsResult, path, targetShelter) {
+    if (!this.algoStepsList) return;
+
+    let stepHtml = `
+      <div class="algo-step-row">
+        <span class="step-badge">BFS Root</span>
+        <span class="step-details">Queue Initialization: Zone ${this.activeZoneId}</span>
+      </div>
+    `;
+
+    // Render Level-by-Level breakdown
+    const levels = bfsResult.levels || {};
+    Object.keys(levels).forEach(lvl => {
+      const nodes = levels[lvl];
+      stepHtml += `
+        <div class="algo-step-row">
+          <span class="step-badge">Level ${lvl}</span>
+          <span class="step-details font-mono">[${nodes.join(", ")}]</span>
+        </div>
+      `;
+    });
+
+    stepHtml += `
+      <div class="algo-step-row">
+        <span class="step-badge">Result</span>
+        <span class="step-details text-green">
+          <strong>Reachable Shelters: [${bfsResult.reachableShelters.map(s => s.id).join(", ") || 'None'}]</strong>
+        </span>
+      </div>
+    `;
+
+    this.algoStepsList.innerHTML = stepHtml;
+
+    // Render Reachability Details in Detail Box
+    if (this.algoDetailContent) {
+      if (this.algoDetailTitle) this.algoDetailTitle.textContent = "BFS Reachability & Minimum Hop Inspector";
+
+      let detailHtml = `
+        <div class="bfs-level-group">
+      `;
+
+      Object.keys(levels).forEach(lvl => {
+        detailHtml += `
+          <div class="bfs-level-row">
+            <span class="bfs-lvl-badge">Level ${lvl}</span>
+            <span class="bfs-lvl-nodes">${levels[lvl].join(" &nbsp;•&nbsp; ")}</span>
+          </div>
+        `;
+      });
+
+      detailHtml += `
+        </div>
+        <div style="margin-top: 8px; font-size: 0.72rem; padding: 6px; background: #ffffff; border-radius: 4px; border: 1px dashed #cbd5e1;">
+          <strong>Minimum Hop Shelter:</strong> <span class="text-blue font-bold">${bfsResult.minimumHopShelter || 'None'}</span>
+          &nbsp;|&nbsp; <strong>Hops:</strong> ${bfsResult.minimumHops !== Infinity ? bfsResult.minimumHops : 'N/A'}
+        </div>
+      `;
+
+      this.algoDetailContent.innerHTML = detailHtml;
+    }
+
+    if (this.algoFinalCostVal) this.algoFinalCostVal.textContent = `${Math.max(0, path.length - 1)} hops`;
+    if (this.algoFinalPathVal) this.algoFinalPathVal.textContent = targetShelter ? `${targetShelter.name}` : "None";
   }
 
   // ==========================================
@@ -313,6 +512,7 @@ class DisasterEvacuationApp {
     if (!road) return;
 
     road.blocked = !road.blocked;
+    road.status = road.blocked ? "blocked" : "open";
     this.renderStats();
     this.executeAlgorithm(this.activeAlgorithm, this.activeZoneId);
   }
@@ -320,8 +520,9 @@ class DisasterEvacuationApp {
   simulateRoadFailure() {
     const target = this.scenario.roads.find(r => r.id === "C-J_Central") || this.scenario.roads[0];
     target.blocked = !target.blocked;
+    target.status = target.blocked ? "blocked" : "open";
     this.renderStats();
-    this.executeAlgorithm("DIJKSTRA", this.activeZoneId);
+    this.executeAlgorithm(this.activeAlgorithm, this.activeZoneId);
   }
 
   // ==========================================
@@ -338,8 +539,8 @@ class DisasterEvacuationApp {
   renderStats() {
     const totalEmergencies = this.scenario.zones.filter(z => z.remaining > 0).length;
     const availableShelters = this.scenario.shelters.filter(s => (s.totalCapacity - s.currentOccupancy) > 0).length;
-    const blockedRoads = this.scenario.roads.filter(r => r.blocked).length;
-    const totalToEvac = this.scenario.zones.reduce((s, z) => s + z.remaining, 0);
+    const blockedRoads = this.scenario.roads.filter(r => r.blocked || r.status === "blocked").length;
+    const totalToEvac = this.scenario.zones.reduce((s, z) => s + (z.remaining !== undefined ? z.remaining : z.population), 0);
 
     if (this.statActiveEmergencies) this.statActiveEmergencies.textContent = String(totalEmergencies).padStart(2, "0");
     if (this.statAvailableShelters) this.statAvailableShelters.textContent = String(availableShelters).padStart(2, "0");
@@ -349,6 +550,8 @@ class DisasterEvacuationApp {
 
   renderEmergenciesList() {
     if (!this.emergenciesList) return;
+
+    const maxPop = Math.max(...this.scenario.zones.map(z => Number(z.population) || 0), 100);
 
     const badgeClassMap = {
       CRITICAL: "tag-critical",
@@ -372,8 +575,8 @@ class DisasterEvacuationApp {
     };
 
     this.emergenciesList.innerHTML = this.scenario.zones.map(z => {
-      const risk = calculateRiskScore(z);
-      const prioVal = z.priorityScore || Math.round(risk.riskScore / 10);
+      const risk = calculateRiskScore(z, maxPop);
+      const prioVal = risk.riskScore.toFixed(1);
       const tagClass = badgeClassMap[z.severityLabel] || "tag-high";
       const iconBg = iconBgMap[z.severityLabel] || "icon-pink";
       const btnClass = btnClassMap[z.severityLabel] || "btn-process-red";
@@ -389,7 +592,7 @@ class DisasterEvacuationApp {
             <div class="em-name">${z.type} — ${z.name}</div>
             <div class="em-meta">
               <span>👥 ${z.remaining || z.population} people</span>
-              <span>Priority: ${prioVal}</span>
+              <span>Priority Score: <strong>${prioVal}</strong></span>
             </div>
           </div>
 
@@ -407,11 +610,26 @@ class DisasterEvacuationApp {
   }
 
   renderPriorityQueueTables() {
-    // Sort zones by Priority Score descending (Max-Heap order)
-    const sorted = [...this.scenario.zones].sort((a, b) => (b.priorityScore || 0) - (a.priorityScore || 0));
+    const maxPop = Math.max(...this.scenario.zones.map(z => Number(z.population) || 0), 100);
+
+    // Build MaxHeap with deterministic tie-breaking
+    const maxHeap = new MaxHeap();
+    this.scenario.zones.forEach(z => {
+      const scoreData = calculateRiskScore(z, maxPop);
+      maxHeap.insert({
+        ...z,
+        priorityScore: scoreData.riskScore,
+        riskScore: scoreData.riskScore
+      });
+    });
+
+    const sorted = [];
+    while (!maxHeap.isEmpty()) {
+      sorted.push(maxHeap.extractMax());
+    }
 
     const rowsHtml = sorted.map((z, idx) => {
-      const prioVal = z.priorityScore || 10 - idx;
+      const prioVal = z.priorityScore.toFixed(1);
       const isTop = idx === 0;
       return `
         <tr class="${isTop ? 'active-row' : ''}">
@@ -433,12 +651,15 @@ class DisasterEvacuationApp {
 
     if (this.ntpText && sorted.length > 0) {
       const top = sorted[0];
-      this.ntpText.textContent = `E001 — ${top.type} — ${top.name} (Priority ${top.priorityScore || 10})`;
+      this.ntpText.textContent = `E001 — ${top.type} — ${top.name} (Priority ${top.priorityScore.toFixed(1)})`;
     }
   }
 
-  renderSheltersList() {
+  renderSheltersList(evaluation = null) {
     if (!this.sheltersList) return;
+
+    const activeZone = this.scenario.zones.find(z => z.id === this.activeZoneId) || this.scenario.zones[0];
+    const reqPop = activeZone.remaining !== undefined ? activeZone.remaining : activeZone.population;
 
     this.sheltersList.innerHTML = this.scenario.shelters.map(s => {
       const avail = Math.max(0, s.totalCapacity - s.currentOccupancy);
@@ -454,6 +675,24 @@ class DisasterEvacuationApp {
         fillClass = "fill-cyan";
       }
 
+      // Check capacity feasibility relative to active danger zone
+      const audit = evaluation && evaluation.shelters ? evaluation.shelters[s.id] : null;
+      let statusBadge = "";
+      if (audit) {
+        if (audit.feasible) {
+          statusBadge = `<span class="audit-status-badge badge-feasible">FEASIBLE</span>`;
+        } else if (!audit.reachable) {
+          statusBadge = `<span class="audit-status-badge badge-unreachable">UNREACHABLE</span>`;
+        } else {
+          statusBadge = `<span class="audit-status-badge badge-rejected" title="${audit.reason}">INSUFFICIENT</span>`;
+        }
+      } else {
+        const hasCap = avail >= reqPop;
+        statusBadge = hasCap 
+          ? `<span class="audit-status-badge badge-feasible">FEASIBLE</span>`
+          : `<span class="audit-status-badge badge-rejected">INSUFFICIENT</span>`;
+      }
+
       return `
         <div class="shelter-row-card">
           <div class="shelter-icon-badge ${iconClass}">
@@ -461,11 +700,14 @@ class DisasterEvacuationApp {
           </div>
 
           <div class="shelter-data-wrap">
-            <div class="shelter-name-row">${s.name}</div>
+            <div class="shelter-name-row" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>${s.name}</span>
+              ${statusBadge}
+            </div>
             <div class="shelter-metrics-row">
-              <span>Capacity <strong>${s.totalCapacity}</strong></span>
-              <span>Occupied <strong>${s.currentOccupancy}</strong></span>
-              <span>Available <strong>${avail}</strong></span>
+              <span>Cap <strong>${s.totalCapacity}</strong></span>
+              <span>Occ <strong>${s.currentOccupancy}</strong></span>
+              <span>Avail <strong>${avail}</strong></span>
             </div>
             <div class="shelter-progress-line">
               <div class="shelter-progress-fill ${fillClass}" style="width: ${pct}%"></div>

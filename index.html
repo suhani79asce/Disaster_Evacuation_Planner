@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disaster Evacuation Planner</title>
+  <meta name="description" content="Emergency Disaster Evacuation Planner using Priority Queue, BFS, and Dijkstra Algorithms">
+  
+  <!-- Fonts: Plus Jakarta Sans / Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="light-theme">
+
+  <!-- ==========================================
+       TOP NAVIGATION BAR
+       ========================================== -->
+  <header class="app-topbar">
+    <div class="topbar-left">
+      <div class="app-logo-shield">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#0ea5e9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="app-branding">
+        <h1 class="app-title">Disaster Evacuation Planner</h1>
+        <p class="app-tagline">Safe People • Smart Routes • Better Tomorrow</p>
+      </div>
+    </div>
+
+    <!-- Center Navigation Tabs -->
+    <div class="topbar-center">
+      <button class="nav-tab-btn active" id="navTabDashboard">
+        <span class="nav-icon">🏠</span>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-tab-btn" id="navTabSimulation">
+        <span class="nav-icon">⚗</span>
+        <span>Simulation</span>
+      </button>
+    </div>
+
+    <!-- Right System Status -->
+    <div class="topbar-right">
+      <div class="status-indicator">
+        <span class="status-dot-green"></span>
+        <div class="status-meta">
+          <span class="status-title">System Online</span>
+          <span class="status-time" id="systemClock">Last Updated: 10:42:18</span>
+        </div>
+      </div>
+      <button class="icon-button" title="Notifications">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#64748b" stroke-width="2">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+      </button>
+      <div class="user-avatar" title="Commander Profile">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#475569" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+       MAIN DASHBOARD CONTAINER
+       ========================================== -->
+  <main class="dashboard-viewport">
+
+    <!-- 1. TOP 4 METRICS CARDS ROW -->
+    <section class="top-kpi-row" aria-label="Key Emergency Metrics">
+      
+      <!-- Card 1: Active Emergencies -->
+      <div class="kpi-box kpi-box-pink">
+        <div class="kpi-icon-wrap icon-pink">
+          <span>🔥</span>
+        </div>
+        <div class="kpi-data">
+          <div class="kpi-heading">Active Emergencies</div>
+          <div class="kpi-number" id="statActiveEmergencies">05</div>
+          <div class="kpi-subtext text-pink">↑ +2 in last hour</div>
+        </div>
+        <div class="kpi-arrow">›</div>
+      </div>
+
+      <!-- Card 2: Available Shelters -->
+      <div class="kpi-box kpi-box-green">
+        <div class="kpi-icon-wrap icon-green">
+          <span>🏠</span>
+        </div>
+        <div class="kpi-data">
+          <div class="kpi-heading">Available Shelters</div>
+          <div class="kpi-number" id="statAvailableShelters">08</div>
+          <div class="kpi-subtext text-green">↑ +1 available</div>
+        </div>
+        <div class="kpi-arrow">›</div>
+      </div>
+
+      <!-- Card 3: Blocked Roads -->
+      <div class="kpi-box kpi-box-yellow">
+        <div class="kpi-icon-wrap icon-yellow">
+          <span>🚧</span>
+        </div>
+        <div class="kpi-data">
+          <div class="kpi-heading">Blocked Roads</div>
+          <div class="kpi-number" id="statBlockedRoads">12</div>
+          <div class="kpi-subtext text-yellow">↑ +3 in last hour</div>
+        </div>
+        <div class="kpi-arrow">›</div>
+      </div>
+
+      <!-- Card 4: People to Evacuate -->
+      <div class="kpi-box kpi-box-blue">
+        <div class="kpi-icon-wrap icon-blue">
+          <span>👥</span>
+        </div>
+        <div class="kpi-data">
+          <div class="kpi-heading">People to Evacuate</div>
+          <div class="kpi-number" id="statPeopleToEvacuate">2,450</div>
+          <div class="kpi-subtext text-blue">↑ +320 in last hour</div>
+        </div>
+        <div class="kpi-arrow">›</div>
+      </div>
+
+    </section>
+
+    <!-- 2. THREE-COLUMN COMMAND CENTER GRID -->
+    <div class="main-columns-grid">
+
+      <!-- ==========================================
+           LEFT COLUMN: ACTIVE EMERGENCIES & PRIORITY QUEUE
+           ========================================== -->
+      <aside class="col-left">
+
+        <!-- Card A: Active Emergencies -->
+        <div class="panel-box">
+          <div class="panel-head">
+            <div class="panel-title-wrap">
+              <span class="panel-icon text-red">🔥</span>
+              <h2 class="panel-title">Active Emergencies</h2>
+            </div>
+            <a href="#" class="panel-link" id="linkViewAllEmergencies">View All</a>
+          </div>
+
+          <div class="emergencies-list" id="emergenciesList">
+            <!-- Dynamically populated from data -->
+          </div>
+        </div>
+
+        <!-- Card B: Priority Queue -->
+        <div class="panel-box">
+          <div class="panel-head">
+            <div class="panel-title-wrap">
+              <span class="panel-icon text-red">🚨</span>
+              <h2 class="panel-title">Priority Queue</h2>
+            </div>
+            <a href="#" class="panel-link">View All</a>
+          </div>
+
+          <div class="pq-table-wrap">
+            <table class="pq-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Type</th>
+                  <th>Zone</th>
+                  <th class="text-right">Priority</th>
+                </tr>
+              </thead>
+              <tbody id="pqTableBody">
+                <!-- Dynamically populated from Priority Queue (MaxHeap) -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- NEXT TO PROCESS CALLOUT -->
+          <div class="next-to-process-box" id="nextToProcessCard">
+            <div class="ntp-label">NEXT TO PROCESS</div>
+            <div class="ntp-row">
+              <span class="ntp-icon">🔥</span>
+              <span class="ntp-text" id="ntpText">E001 — Fire — Zone A (Priority 10)</span>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ==========================================
+           MIDDLE COLUMN: LIVE MAP & ROUTE INFORMATION
+           ========================================== -->
+      <section class="col-middle">
+
+        <!-- Map Card -->
+        <div class="panel-box map-panel">
+          <div class="map-panel-head">
+            <h2 class="panel-title">Live Map</h2>
+            
+            <!-- Map Tools Controls -->
+            <div class="map-toolbar">
+              <button class="map-tool-btn" id="btnZoomIn" title="Zoom In">+</button>
+              <button class="map-tool-btn" id="btnZoomOut" title="Zoom Out">−</button>
+              <button class="map-tool-btn" id="btnMapLayers" title="Map Layers">◫</button>
+              <button class="map-tool-btn" id="btnLocate" title="Reset View">📍</button>
+            </div>
+          </div>
+
+          <!-- SVG Canvas Container -->
+          <div class="live-map-wrapper" id="mapContainer">
+            <!-- Rendered via js/map.js -->
+          </div>
+        </div>
+
+        <!-- Lower Section: Route Information & Priority Queue Visualizer -->
+        <div class="route-details-split">
+          
+          <!-- Sub-Card 1: Route Information -->
+          <div class="panel-box subcard-route">
+            <div class="panel-head">
+              <div class="panel-title-wrap">
+                <span class="panel-icon text-blue">🗺</span>
+                <h3 class="panel-title">Route Information</h3>
+              </div>
+              <span class="status-pill-green" id="routeStatusPill">SAFE ROUTE FOUND</span>
+            </div>
+
+            <!-- Route Meta Chips -->
+            <div class="route-meta-row">
+              <div class="route-meta-item">
+                <span class="meta-icon icon-pink">🔥</span>
+                <div>
+                  <span class="meta-label">Emergency</span>
+                  <strong class="meta-val" id="routeEmergencyVal">Fire — Zone A</strong>
+                </div>
+              </div>
+
+              <div class="route-meta-item">
+                <span class="meta-icon icon-green">🏠</span>
+                <div>
+                  <span class="meta-label">Destination</span>
+                  <strong class="meta-val" id="routeDestinationVal">Shelter S02</strong>
+                </div>
+              </div>
+
+              <div class="route-meta-item">
+                <span class="meta-icon icon-blue">⚙</span>
+                <div>
+                  <span class="meta-label">Algorithm</span>
+                  <strong class="meta-val text-blue" id="routeAlgorithmVal">DIJKSTRA</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Metrics stats row -->
+            <div class="route-metrics-strip">
+              <div class="strip-item">
+                <span class="strip-icon">📏</span>
+                <div>
+                  <div class="strip-label">Distance</div>
+                  <strong class="strip-val" id="routeDistVal">8.4 km</strong>
+                </div>
+              </div>
+
+              <div class="strip-item">
+                <span class="strip-icon">⏱</span>
+                <div>
+                  <div class="strip-label">Estimated Cost</div>
+                  <strong class="strip-val" id="routeCostVal">14</strong>
+                </div>
+              </div>
+
+              <div class="strip-item">
+                <span class="strip-icon">🕒</span>
+                <div>
+                  <div class="strip-label">Estimated Time</div>
+                  <strong class="strip-val" id="routeTimeVal">12 min</strong>
+                </div>
+              </div>
+
+              <div class="strip-item">
+                <span class="strip-icon text-yellow">⚠</span>
+                <div>
+                  <div class="strip-label">Roads Blocked</div>
+                  <strong class="strip-val" id="routeBlockedVal">2</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Breadcrumb Path -->
+            <div class="route-path-box">
+              <div class="path-title">Route Path</div>
+              <div class="path-sequence" id="routePathSequence">
+                Zone A → Junction B → Road C → Shelter S02
+              </div>
+            </div>
+
+            <!-- Actions Row -->
+            <div class="route-actions-row">
+              <button class="btn btn-primary-blue" id="btnRunDijkstra">RUN DIJKSTRA</button>
+              <button class="btn btn-outline-blue" id="btnRunBFS">RUN BFS</button>
+            </div>
+          </div>
+
+          <!-- Sub-Card 2: Priority Queue (Heap Display) -->
+          <div class="panel-box subcard-pq">
+            <div class="panel-head">
+              <div class="panel-title-wrap">
+                <span class="panel-icon text-blue">📊</span>
+                <h3 class="panel-title">Priority Queue</h3>
+              </div>
+            </div>
+
+            <div class="mini-pq-table-wrap">
+              <table class="pq-table pq-table-compact">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Type</th>
+                    <th>Zone</th>
+                    <th class="text-right">Priority</th>
+                  </tr>
+                </thead>
+                <tbody id="miniPqTableBody">
+                  <!-- Dynamically rendered -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="heap-segmented-bar-wrap">
+              <div class="heap-bar-blocks">
+                <span class="hbar-block fill-green"></span>
+                <span class="hbar-block fill-green"></span>
+                <span class="hbar-block fill-green"></span>
+                <span class="hbar-block fill-green"></span>
+                <span class="hbar-block fill-green"></span>
+                <span class="hbar-block fill-green"></span>
+              </div>
+              <span class="heap-bar-label">Priority Queue (Min Heap)</span>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           RIGHT COLUMN: SAFE SHELTERS & ALGORITHM VISUALIZER
+           ========================================== -->
+      <aside class="col-right">
+
+        <!-- Card D: Safe Shelters -->
+        <div class="panel-box">
+          <div class="panel-head">
+            <div class="panel-title-wrap">
+              <span class="panel-icon text-green">🛡</span>
+              <h2 class="panel-title">Safe Shelters</h2>
+            </div>
+            <a href="#" class="panel-link">View All</a>
+          </div>
+
+          <div class="shelters-list" id="sheltersList">
+            <!-- Dynamically populated from data -->
+          </div>
+        </div>
+
+        <!-- Card E: Algorithm Visualizer -->
+        <div class="panel-box visualizer-box">
+          <div class="panel-head">
+            <div class="panel-title-wrap">
+              <span class="panel-icon text-purple">🧠</span>
+              <h2 class="panel-title">Algorithm Visualizer</h2>
+            </div>
+          </div>
+
+          <!-- Segmented Tab: BFS vs DIJKSTRA -->
+          <div class="algo-toggle-switch">
+            <button class="switch-btn" id="btnTabBFS">BFS</button>
+            <button class="switch-btn active" id="btnTabDijkstra">DIJKSTRA</button>
+          </div>
+
+          <!-- Stepper Title -->
+          <div class="visualizer-subhead" id="visualizerSubhead">Dijkstra Execution</div>
+
+          <!-- Execution Step List -->
+          <div class="algo-steps-list" id="algoStepsList">
+            <!-- Populated dynamically with Step 1..Step 5 -->
+          </div>
+
+          <!-- Summary Badges: Final Cost & Path -->
+          <div class="algo-results-strip">
+            <div class="res-box">
+              <span class="res-label">Final Cost</span>
+              <strong class="res-number" id="algoFinalCostVal">8</strong>
+            </div>
+            <div class="res-box res-box-grow">
+              <span class="res-label">Path</span>
+              <strong class="res-path" id="algoFinalPathVal">A → B → C → S2</strong>
+            </div>
+          </div>
+
+          <!-- Node States Legend -->
+          <div class="node-states-legend">
+            <span class="legend-chip"><span class="chip-dot dot-gray"></span> Unexplored</span>
+            <span class="legend-chip"><span class="chip-dot dot-amber"></span> Processing</span>
+            <span class="legend-chip"><span class="chip-dot dot-green"></span> Visited</span>
+            <span class="legend-chip"><span class="chip-dot dot-cyan"></span> Final Path</span>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+
+  </main>
+
+  <!-- ==========================================
+       SIMULATION MODAL / DRAWER (For full Step-by-Step & Custom Presets)
+       ========================================== -->
+  <div id="simulationModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">⚗ DAA Simulation Engine & Scenario Controls</h3>
+        <button id="btnCloseSimulation" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="sim-actions-grid">
+          <div class="sim-card">
+            <h4>Playback Controls</h4>
+            <div class="sim-btn-row">
+              <button id="btnSimStart" class="btn btn-primary-blue">▶ Start Evacuation</button>
+              <button id="btnSimStep" class="btn btn-outline-blue">⏭ Next Step (Space)</button>
+              <button id="btnSimFailure" class="btn btn-danger-pill">⚠ Simulate Road Failure</button>
+              <button id="btnSimReset" class="btn btn-outline-gray">↺ Reset</button>
+            </div>
+          </div>
+
+          <div class="sim-card">
+            <h4>Scenario Presets</h4>
+            <select id="simPresetSelect" class="preset-dropdown-full">
+              <option value="standard">1. Standard Hyderabad Demo (Balanced)</option>
+              <option value="road_failure">2. Dynamic Road Failure Reroute</option>
+              <option value="capacity_overload">3. Capacity Crisis (Partial Evac)</option>
+              <option value="isolated_failure">4. Cut Off Hazard Zone (BFS Failure)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sim-log-wrap">
+          <h4>Live DAA Execution Terminal Log</h4>
+          <div class="terminal-log-screen" id="terminalOutput">
+            <!-- Algorithm logs -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/data.js"></script>
+  <script src="js/algorithms.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

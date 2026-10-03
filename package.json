@@ -1,0 +1,20 @@
+{
+  "name": "disaster-evacuation-planner",
+  "version": "1.0.0",
+  "description": "Priority-Driven Emergency Evacuation Routing using Priority Queue, BFS, and Dijkstra's Algorithm",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test_algorithms.js && node test_full_simulation.js"
+  },
+  "keywords": [
+    "daa",
+    "priority-queue",
+    "bfs",
+    "dijkstra",
+    "evacuation-planner",
+    "algorithms"
+  ],
+  "author": "",
+  "license": "MIT"
+}
